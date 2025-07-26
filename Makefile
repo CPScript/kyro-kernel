@@ -2,10 +2,10 @@ CC = gcc
 LD = ld
 NASM = nasm
 
-CFLAGS = -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -m32 -Iinclude -Ikernel
-LDFLAGS = -Ttext 0x1000 --oformat binary -m elf_i386
+CFLAGS = -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -m32 -Iinclude -Ikernel -fno-pie -fno-pic
+LDFLAGS = -Ttext 0x1000 --oformat binary -m elf_i386 -nostdlib
 
-# Source directories
+# Source dirs
 KERNEL_DIR = kernel
 DRIVERS_DIR = kernel/drivers
 UTILS_DIR = kernel/utils
@@ -93,7 +93,7 @@ string.o: $(UTILS_DIR)/string.c
 math.o: $(UTILS_DIR)/math.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# System objects (new)
+# System objects
 idt.o: $(INTERRUPTS_DIR)/idt.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
