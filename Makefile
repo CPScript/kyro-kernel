@@ -2,9 +2,10 @@ CC = gcc
 LD = ld
 NASM = nasm
 
-CFLAGS = -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -m32 -Iinclude
+CFLAGS = -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -m32 -Iinclude -Ikernel
 LDFLAGS = -Ttext 0x1000 --oformat binary -m elf_i386
 
+# Source dirs
 KERNEL_DIR = kernel
 DRIVERS_DIR = kernel/drivers
 UTILS_DIR = kernel/utils
