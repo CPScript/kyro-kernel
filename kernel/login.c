@@ -1,4 +1,5 @@
 #include "login.h"
+#include "kernel.h"
 
 void login_prompt() {
     printf("Login: ");
