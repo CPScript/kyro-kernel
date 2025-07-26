@@ -19,17 +19,21 @@ void idt_init(void) {
     // Clear IDT
     memset(&idt, 0, sizeof(idt_entry_t) * IDT_ENTRIES);
     
-    // Set up exception handlers (0-31)
-    idt_set_gate(0, (uint32_t)divide_error_handler, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
-    idt_set_gate(1, (uint32_t)debug_handler, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
-    idt_set_gate(2, (uint32_t)nmi_handler, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
-    idt_set_gate(3, (uint32_t)breakpoint_handler, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
-    idt_set_gate(13, (uint32_t)general_protection_fault_handler, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
-    idt_set_gate(14, (uint32_t)page_fault_handler, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
+    // Set up exception handlers (0-31) 
+    extern void divide_error_handler_asm(void);
+    extern void general_protection_fault_handler_asm(void);
+    extern void page_fault_handler_asm(void);
+    
+    idt_set_gate(0, (uint32_t)divide_error_handler_asm, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
+    idt_set_gate(13, (uint32_t)general_protection_fault_handler_asm, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
+    idt_set_gate(14, (uint32_t)page_fault_handler_asm, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
     
     // Hardware interrupts (32-47)
-    idt_set_gate(32, (uint32_t)timer_handler, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
-    idt_set_gate(33, (uint32_t)keyboard_handler, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
+    extern void timer_handler_asm(void);
+    extern void keyboard_handler_asm(void);
+    
+    idt_set_gate(32, (uint32_t)timer_handler_asm, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
+    idt_set_gate(33, (uint32_t)keyboard_handler_asm, 0x08, IDT_FLAG_PRESENT | IDT_GATE_INT32);
     
     load_idt();
 }
