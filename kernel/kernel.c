@@ -1,19 +1,23 @@
-// Updated to work with changes
+// kernel/kernel.c - Enhanced version
 #include "kernel.h"
 #include "interrupts/idt.h"
 #include "memory/paging.h"
 #include "timer.h"
 #include "syscall.h"
 #include "process.h"
+#include "io.h"
+#include "fs/fs.h"
 #include "drivers/keyboard.h"
-#include "drivers/mouse.h"
+#include "drivers/mouse.h" 
 #include "drivers/network.h"
-#include "fs.h"
 #include "terminal.h"
 #include "user.h"
 #include "shell.h"
 #include "package_manager.h"
 #include "scripting.h"
+#include "login.h"
+#include "run_shell.h"
+#include "run_terminal.h"
 
 void clear_screen() {
     char *video_memory = (char *)0xb8000;
@@ -37,10 +41,15 @@ void print_message(const char *message) {
 void kernel_init() {
     // Initialize core systems first
     idt_init();
+    pic_init();        // Initialize PIC before enabling interrupts
+    timer_init(100);   // 100Hz timer
     paging_init();
-    timer_init(100); // 100Hz timer
     syscall_init();
     process_init();
+    
+    // Enable interrupts for timer and keyboard
+    pic_enable_irq(0); // Timer
+    pic_enable_irq(1); // Keyboard
     
     // Initialize your existing components
     fs_init();
@@ -52,14 +61,14 @@ void kernel_init() {
     
     // Initialize drivers
     keyboard_init();
-    mouse_init();
+    mouse_init(); 
     network_init();
     
     // Initialize user system and filesystem
     init_users();
     init_file_system();
     
-    print_message("Kyro OS - All systems initialized\n");
+    printf("Kyro OS - All systems initialized\n");
 }
 
 void kernel_main() {
