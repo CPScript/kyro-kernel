@@ -1,11 +1,6 @@
 #include "io.h"
 #include "pic.h"
 
-#define PIC1_COMMAND    0x20
-#define PIC1_DATA       0x21
-#define PIC2_COMMAND    0xA0
-#define PIC2_DATA       0xA1
-
 #define ICW1_ICW4       0x01    // ICW4 (not) needed
 #define ICW1_SINGLE     0x02    // Single (cascade) mode
 #define ICW1_INTERVAL4  0x04    // Call address interval 4 (8)
@@ -49,9 +44,9 @@ void pic_init(void) {
     outb(PIC2_DATA, ICW4_8086);
     io_wait();
     
-    // Restore saved masks
-    outb(PIC1_DATA, mask1);
-    outb(PIC2_DATA, mask2);
+    // Mask all interrupts initially
+    outb(PIC1_DATA, 0xFF);
+    outb(PIC2_DATA, 0xFF);
 }
 
 void pic_enable_irq(uint8_t irq) {
@@ -84,7 +79,29 @@ void pic_disable_irq(uint8_t irq) {
 
 void pic_send_eoi(uint8_t irq) {
     if (irq >= 8) {
-        outb(PIC2_COMMAND, 0x20);
+        outb(PIC2_COMMAND, PIC_EOI);
     }
-    outb(PIC1_COMMAND, 0x20);
+    outb(PIC1_COMMAND, PIC_EOI);
+}
+
+void pic_mask_all(void) {
+    outb(PIC1_DATA, 0xFF);
+    outb(PIC2_DATA, 0xFF);
+}
+
+void pic_unmask_all(void) {
+    outb(PIC1_DATA, 0x00);
+    outb(PIC2_DATA, 0x00);
+}
+
+uint16_t pic_get_irr(void) {
+    outb(PIC1_COMMAND, 0x0A);
+    outb(PIC2_COMMAND, 0x0A);
+    return (inb(PIC2_COMMAND) << 8) | inb(PIC1_COMMAND);
+}
+
+uint16_t pic_get_isr(void) {
+    outb(PIC1_COMMAND, 0x0B);
+    outb(PIC2_COMMAND, 0x0B);
+    return (inb(PIC2_COMMAND) << 8) | inb(PIC1_COMMAND);
 }
