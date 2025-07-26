@@ -516,3 +516,87 @@ bool check_heap_integrity() {
     
     return true;
 }
+
+// Simple placement allocator
+uint32_t placement_address = 0x100000; // Start at 1MB
+
+uint32_t kmalloc(uint32_t size) {
+    uint32_t addr = placement_address;
+    placement_address += size;
+    return addr;
+}
+
+uint32_t kmalloc_a(uint32_t size) {
+    // Align to page boundary
+    if (placement_address & 0xFFFFF000) {
+        placement_address &= 0xFFFFF000;
+        placement_address += 0x1000;
+    }
+    uint32_t addr = placement_address;
+    placement_address += size;
+    return addr;
+}
+
+uint32_t kmalloc_p(uint32_t size, uint32_t *phys_addr) {
+    uint32_t addr = placement_address;
+    if (phys_addr) {
+        *phys_addr = addr;
+    }
+    placement_address += size;
+    return addr;
+}
+
+uint32_t kmalloc_ap(uint32_t size, uint32_t *phys_addr) {
+    // Align to page boundary
+    if (placement_address & 0xFFFFF000) {
+        placement_address &= 0xFFFFF000;
+        placement_address += 0x1000;
+    }
+    uint32_t addr = placement_address;
+    if (phys_addr) {
+        *phys_addr = addr;
+    }
+    placement_address += size;
+    return addr;
+}
+
+void kfree(void *ptr) {
+    // Simple allocator doesn't support freeing
+    (void)ptr;
+}
+
+void *malloc(size_t size) {
+    return (void*)kmalloc(size);
+}
+
+void free(void *ptr) {
+    kfree(ptr);
+}
+
+void *memset(void *dest, int c, size_t n) {
+    uint8_t *p = (uint8_t*)dest;
+    for (size_t i = 0; i < n; i++) {
+        p[i] = (uint8_t)c;
+    }
+    return dest;
+}
+
+void *memcpy(void *dest, const void *src, size_t n) {
+    uint8_t *d = (uint8_t*)dest;
+    const uint8_t *s = (const uint8_t*)src;
+    for (size_t i = 0; i < n; i++) {
+        d[i] = s[i];
+    }
+    return dest;
+}
+
+int memcmp(const void *s1, const void *s2, size_t n) {
+    const uint8_t *p1 = (const uint8_t*)s1;
+    const uint8_t *p2 = (const uint8_t*)s2;
+    for (size_t i = 0; i < n; i++) {
+        if (p1[i] != p2[i]) {
+            return p1[i] - p2[i];
+        }
+    }
+    return 0;
+}
