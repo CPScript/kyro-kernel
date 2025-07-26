@@ -39,9 +39,9 @@ void load_idt(void) {
     asm volatile("lidt %0" : : "m"(idt_ptr));
 }
 
-// Exception handlers (basic implementations)
 void divide_error_handler(void) {
-    // Handle divide by zero
+    // Handle divide by zero exception
+    print_message("EXCEPTION: Divide by zero\n");
     asm volatile("cli; hlt");
 }
 
@@ -54,3 +54,49 @@ void page_fault_handler(void) {
     // Handle page fault
     asm volatile("cli; hlt");
 }
+
+void debug_handler(void) {
+    print_message("EXCEPTION: Debug\n");
+    asm volatile("cli; hlt");
+}
+
+void nmi_handler(void) {
+    print_message("EXCEPTION: NMI\n");
+    asm volatile("cli; hlt");
+}
+
+void breakpoint_handler(void) {
+    print_message("EXCEPTION: Breakpoint\n");
+    asm volatile("cli; hlt");
+}
+
+void general_protection_fault_handler(void) {
+    print_message("EXCEPTION: General Protection Fault\n");
+    asm volatile("cli; hlt");
+}
+
+void page_fault_handler(void) {
+    print_message("EXCEPTION: Page Fault\n");
+    asm volatile("cli; hlt");
+}
+
+// Hardware interrupt handlers
+void timer_handler_asm(void);
+void keyboard_handler_asm(void);
+
+// Assembly wrappers for interrupt handlers
+asm(
+    ".global timer_handler_asm\n"
+    "timer_handler_asm:\n"
+    "    pusha\n"
+    "    call timer_handler\n"
+    "    popa\n"
+    "    iret\n"
+    
+    ".global keyboard_handler_asm\n"
+    "keyboard_handler_asm:\n"
+    "    pusha\n"
+    "    call keyboard_interrupt_handler\n"
+    "    popa\n"
+    "    iret\n"
+);
