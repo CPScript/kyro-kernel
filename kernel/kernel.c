@@ -1,4 +1,10 @@
+// Updated to work with changes
 #include "kernel.h"
+#include "interrupts/idt.h"
+#include "memory/paging.h"
+#include "timer.h"
+#include "syscall.h"
+#include "process.h"
 #include "drivers/keyboard.h"
 #include "drivers/mouse.h"
 #include "drivers/network.h"
@@ -19,7 +25,7 @@ void clear_screen() {
 
 void print_message(const char *message) {
     char *video_memory = (char *)0xb8000;
-    int offset = 0;
+    static int offset = 0;
     while (*message) {
         video_memory[offset * 2] = *message;
         video_memory[offset * 2 + 1] = 0x07;
@@ -29,26 +35,51 @@ void print_message(const char *message) {
 }
 
 void kernel_init() {
-    init_users();
-    init_file_system();
-    printf("Initialization complete. You can now boot the OS.\n");
-}
-
-void kernel_main() {
-    clear_screen();
-    print_message("Welcome to Kyro OS!\nYour in control!");
-    keyboard_init();
-    mouse_init();
-    network_init();
+    // Initialize core systems first
+    idt_init();
+    paging_init();
+    timer_init(100); // 100Hz timer
+    syscall_init();
+    process_init();
+    
+    // Initialize your existing components
     fs_init();
     terminal_init();
     user_init();
     shell_init();
     package_manager_init();
     scripting_init();
+    
+    // Initialize drivers
+    keyboard_init();
+    mouse_init();
+    network_init();
+    
+    // Initialize user system and filesystem
+    init_users();
+    init_file_system();
+    
+    print_message("Kyro OS - All systems initialized\n");
+}
+
+void kernel_main() {
+    clear_screen();
+    print_message("Welcome to Kyro OS!\nYour in control!\n");
+    
     kernel_init();
+    
+    // Enable interrupts
+    asm volatile("sti");
+    
+    // Start login process
     login_prompt();
-    run_terminal();
-    run_shell();
-    while (1) {}
+    
+    // Start shell in user mode (create as separate process)
+    create_process("shell", (void*)run_shell, false);
+    
+    // Kernel idle loop
+    while (1) {
+        schedule(); // Let other processes run
+        asm volatile("hlt"); // Halt until next interrupt
+    }
 }
