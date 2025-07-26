@@ -5,6 +5,7 @@
 #include "syscall.h"
 #include "process.h"
 #include "io.h"
+#include "pic.h"
 #include "fs/fs.h"
 #include "drivers/keyboard.h"
 #include "drivers/mouse.h" 
