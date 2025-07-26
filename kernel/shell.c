@@ -1,5 +1,5 @@
 #include "shell.h"
 
-void shell() {
-    printf("Shell initialized.\n");
+void shell_init(void) {
+    printf("Shell system initialized.\n");
 }
