@@ -38,6 +38,10 @@ int sscanf(const char *str, const char *format, ...);
 int vsprintf(char *str, const char *format, __builtin_va_list ap);
 int vsscanf(const char *str, const char *format, __builtin_va_list ap);
 
+// Character I/O
+void putchar(char c);
+void puts(const char *str);
+
 // Initialization functions
 void init_users(void);
 void init_file_system(void);
