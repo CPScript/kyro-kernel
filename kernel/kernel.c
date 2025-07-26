@@ -1,4 +1,3 @@
-// kernel/kernel.c - Enhanced version
 #include "kernel.h"
 #include "interrupts/idt.h"
 #include "memory/paging.h"
