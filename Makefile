@@ -5,7 +5,7 @@ NASM = nasm
 CFLAGS = -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -m32 -Iinclude -Ikernel
 LDFLAGS = -Ttext 0x1000 --oformat binary -m elf_i386
 
-# Source dirs
+# Source directories
 KERNEL_DIR = kernel
 DRIVERS_DIR = kernel/drivers
 UTILS_DIR = kernel/utils
@@ -16,13 +16,13 @@ TOOLS_DIR = tools
 
 # Object files
 KERNEL_OBJS = kernel.o fs.o terminal.o user.o shell.o networking.o \
-              package_manager.o scripting.o run_shell.o run_terminal.o login.o
+              package_manager.o scripting.o run_shell.o run_terminal.o login.o printf.o
 
 DRIVER_OBJS = keyboard.o mouse.o network.o
 
 UTIL_OBJS = memory.o string.o math.o
 
-SYSTEM_OBJS = idt.o paging.o timer.o syscall.o process.o io.o
+SYSTEM_OBJS = idt.o paging.o timer.o syscall.o process.o io.o pic.o interrupt_asm.o
 
 STDIO_OBJS = stdio.o
 
@@ -114,6 +114,18 @@ io.o: $(KERNEL_DIR)/io.c
 
 # Library objects
 stdio.o: $(LIB_DIR)/stdio/stdio.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Assembly objects
+interrupt_asm.o: $(INTERRUPTS_DIR)/interrupt_asm.s
+	$(NASM) -f elf32 $< -o $@
+
+# PIC object
+pic.o: $(KERNEL_DIR)/pic.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Printf object
+printf.o: $(KERNEL_DIR)/printf.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Tools objects
