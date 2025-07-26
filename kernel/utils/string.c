@@ -1,143 +1,81 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-// String length
+#include <stdint.h>
+#include "../kernel.h"
+
 size_t strlen(const char *s) {
     size_t len = 0;
-    while (*s++) {
+    while (s[len]) {
         len++;
     }
     return len;
 }
 
-// String copy
 char *strcpy(char *dest, const char *src) {
-    char *original_dest = dest;
+    char *original = dest;
     while ((*dest++ = *src++));
-    return original_dest;
+    return original;
 }
 
-// String copy with length limit
 char *strncpy(char *dest, const char *src, size_t n) {
-    char *original_dest = dest;
-    
-    while (n > 0 && *src) {
-        *dest++ = *src++;
-        n--;
+    size_t i;
+    for (i = 0; i < n && src[i] != '\0'; i++) {
+        dest[i] = src[i];
     }
-    
-    // Pad with null bytes if necessary
-    while (n > 0) {
-        *dest++ = '\0';
-        n--;
+    for (; i < n; i++) {
+        dest[i] = '\0';
     }
-    
-    return original_dest;
+    return dest;
 }
 
-// String concatenation
 char *strcat(char *dest, const char *src) {
-    char *original_dest = dest;
-    
-    // Find end of destination string
+    char *original = dest;
     while (*dest) {
         dest++;
     }
-    
-    // Append source string
     while ((*dest++ = *src++));
-    
-    return original_dest;
+    return original;
 }
 
-// String concatenation with length limit
-char *strncat(char *dest, const char *src, size_t n) {
-    char *original_dest = dest;
-    
-    // Find end of destination string
-    while (*dest) {
-        dest++;
-    }
-    
-    // Append up to n characters from source
-    while (n > 0 && *src) {
-        *dest++ = *src++;
-        n--;
-    }
-    
-    *dest = '\0'; // Null terminate
-    
-    return original_dest;
-}
-
-// String comparison
 int strcmp(const char *s1, const char *s2) {
-    while (*s1 && *s2 && *s1 == *s2) {
+    while (*s1 && (*s1 == *s2)) {
         s1++;
         s2++;
     }
-    return *(unsigned char *)s1 - *(unsigned char *)s2;
+    return *(const unsigned char*)s1 - *(const unsigned char*)s2;
 }
 
-// String comparison with length limit
 int strncmp(const char *s1, const char *s2, size_t n) {
-    while (n > 0 && *s1 && *s2 && *s1 == *s2) {
+    while (n && *s1 && (*s1 == *s2)) {
         s1++;
         s2++;
         n--;
     }
-    
     if (n == 0) {
         return 0;
+    } else {
+        return *(const unsigned char*)s1 - *(const unsigned char*)s2;
     }
-    
-    return *(unsigned char *)s1 - *(unsigned char *)s2;
 }
 
-// Case-insensitive string comparison
-int strcasecmp(const char *s1, const char *s2) {
-    while (*s1 && *s2) {
-        char c1 = (*s1 >= 'A' && *s1 <= 'Z') ? *s1 + 32 : *s1;
-        char c2 = (*s2 >= 'A' && *s2 <= 'Z') ? *s2 + 32 : *s2;
-        
-        if (c1 != c2) {
-            return c1 - c2;
-        }
-        
-        s1++;
-        s2++;
-    }
-    
-    char c1 = (*s1 >= 'A' && *s1 <= 'Z') ? *s1 + 32 : *s1;
-    char c2 = (*s2 >= 'A' && *s2 <= 'Z') ? *s2 + 32 : *s2;
-    
-    return c1 - c2;
-}
-
-// Find character in string
 char *strchr(const char *s, int c) {
-    while (*s) {
-        if (*s == c) {
-            return (char *)s;
+    while (*s != (char)c) {
+        if (!*s++) {
+            return NULL;
         }
-        s++;
     }
-    
-    return (c == '\0') ? (char *)s : NULL;
+    return (char*)s;
 }
 
-// Find last occurrence of character in string
 char *strrchr(const char *s, int c) {
     const char *last = NULL;
-    
-    while (*s) {
-        if (*s == c) {
+    do {
+        if (*s == (char)c) {
             last = s;
         }
-        s++;
-    }
-    
-    return (c == '\0') ? (char *)s : (char *)last;
+    } while (*s++);
+    return (char*)last;
 }
 
 // Find substring
