@@ -1,6 +1,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+// Forward declarations for size_t
+typedef unsigned int size_t;
+typedef uintptr_t uintptr_t;
+
 // Memory block structure for simple allocator
 typedef struct mem_block {
     size_t size;
@@ -12,6 +16,75 @@ typedef struct mem_block {
 static uint8_t heap[0x100000]; // 1MB heap
 static mem_block_t *heap_start = NULL;
 static bool heap_initialized = false;
+
+// Early boot allocator (before paging is enabled)
+static uint32_t placement_address = 0x100000; // Start after 1MB
+
+// Early boot allocation functions
+uint32_t kmalloc_early(uint32_t size) {
+    uint32_t addr = placement_address;
+    placement_address += size;
+    return addr;
+}
+
+// Aligned allocation for page tables
+uint32_t kmalloc_a(uint32_t size) {
+    if (heap_initialized) {
+        // Use regular heap but ensure alignment
+        void *ptr = malloc(size + 0x1000); // Extra space for alignment
+        uint32_t addr = (uint32_t)ptr;
+        if (addr & 0xFFF) {
+            addr = (addr & 0xFFFFF000) + 0x1000;
+        }
+        return addr;
+    }
+    
+    // Align to page boundary (4KB)
+    if (placement_address & 0xFFF) {
+        placement_address &= 0xFFFFF000;
+        placement_address += 0x1000;
+    }
+    
+    uint32_t addr = placement_address;
+    placement_address += size;
+    return addr;
+}
+
+// Aligned allocation with physical address return
+uint32_t kmalloc_ap(uint32_t size, uint32_t *phys_addr) {
+    uint32_t addr = kmalloc_a(size);
+    if (phys_addr) {
+        *phys_addr = addr; // Before paging is enabled, virtual == physical
+    }
+    return addr;
+}
+
+// Regular kernel malloc (integrates with existing heap)
+uint32_t kmalloc(uint32_t size) {
+    if (heap_initialized) {
+        return (uint32_t)malloc(size);
+    }
+    
+    uint32_t addr = placement_address;
+    placement_address += size;
+    return addr;
+}
+
+// Regular kernel malloc with physical address
+uint32_t kmalloc_p(uint32_t size, uint32_t *phys_addr) {
+    uint32_t addr = kmalloc(size);
+    if (phys_addr) {
+        *phys_addr = addr; // For now, virtual == physical
+    }
+    return addr;
+}
+
+void kfree(void *ptr) {
+    if (heap_initialized && ptr >= (void*)heap && ptr < (void*)(heap + sizeof(heap))) {
+        free(ptr);
+    }
+    // Early allocations can't be freed individually
+}
 
 // Initialize the heap
 void heap_init() {
@@ -91,6 +164,11 @@ void *malloc(size_t size) {
 void free(void *ptr) {
     if (!ptr) {
         return;
+    }
+    
+    // Check if pointer is within our heap
+    if (ptr < (void*)heap || ptr >= (void*)(heap + sizeof(heap))) {
+        return; // Not our memory
     }
     
     mem_block_t *block = (mem_block_t *)((uint8_t *)ptr - sizeof(mem_block_t));
@@ -233,6 +311,10 @@ void *memchr(const void *s, int c, size_t n) {
 
 // Memory debugging functions
 void heap_dump() {
+    if (!heap_initialized) {
+        return;
+    }
+    
     mem_block_t *current = heap_start;
     int block_count = 0;
     size_t total_free = 0;
@@ -248,9 +330,8 @@ void heap_dump() {
         current = current->next;
     }
     
-    // Note: This would need printf implementation
-    // printf("Heap: %d blocks, %zu bytes free, %zu bytes used\n", 
-    //        block_count, total_free, total_used);
+    // This would need a working printf implementation (GIGIDY GIGIDY GO!)
+    // For now, this is just a placeholder
 }
 
 bool is_valid_pointer(void *ptr) {
@@ -352,4 +433,86 @@ void pool_destroy(mem_pool_t *pool) {
     
     free(pool->memory);
     free(pool);
+}
+
+// Get current placement address (useful for debugging)
+uint32_t get_placement_address() {
+    return placement_address;
+}
+
+// Set placement address (useful for bootloader integration)
+void set_placement_address(uint32_t addr) {
+    placement_address = addr;
+}
+
+// Memory statistics
+typedef struct {
+    size_t total_heap_size;
+    size_t used_heap_size;
+    size_t free_heap_size;
+    size_t largest_free_block;
+    int total_blocks;
+    int free_blocks;
+    int used_blocks;
+} memory_stats_t;
+
+void get_memory_stats(memory_stats_t *stats) {
+    if (!stats || !heap_initialized) {
+        return;
+    }
+    
+    stats->total_heap_size = sizeof(heap);
+    stats->used_heap_size = 0;
+    stats->free_heap_size = 0;
+    stats->largest_free_block = 0;
+    stats->total_blocks = 0;
+    stats->free_blocks = 0;
+    stats->used_blocks = 0;
+    
+    mem_block_t *current = heap_start;
+    while (current) {
+        stats->total_blocks++;
+        if (current->is_free) {
+            stats->free_blocks++;
+            stats->free_heap_size += current->size;
+            if (current->size > stats->largest_free_block) {
+                stats->largest_free_block = current->size;
+            }
+        } else {
+            stats->used_blocks++;
+            stats->used_heap_size += current->size;
+        }
+        current = current->next;
+    }
+}
+
+// Check heap integrity
+bool check_heap_integrity() {
+    if (!heap_initialized) {
+        return true; // No heap to check
+    }
+    
+    mem_block_t *current = heap_start;
+    uint8_t *heap_end = heap + sizeof(heap);
+    
+    while (current) {
+        // Check if block is within heap bounds
+        if ((uint8_t*)current < heap || (uint8_t*)current >= heap_end) {
+            return false;
+        }
+        
+        // Check if block size is reasonable
+        if (current->size == 0 || current->size > sizeof(heap)) {
+            return false;
+        }
+        
+        // Check if next block pointer is valid
+        if (current->next && ((uint8_t*)current->next < heap || (uint8_t*)current->next >= heap_end)) {
+            return false;
+        }
+        
+        current = current->next;
+    }
+    
+    return true;
 }
