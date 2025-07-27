@@ -14,6 +14,11 @@ page_directory_t *create_page_directory(void) {
 }
 
 void paging_init(void) {
+    // Initialize frame bitmap for 32MB of RAM (adjust as needed)
+    nframes = 0x2000000 / PAGE_SIZE; // 32MB / 4KB
+    frames = (uint32_t*)kmalloc(nframes / 8); // 1 bit per frame
+    memset(frames, 0, nframes / 8);
+    
     // Create kernel page directory
     kernel_directory = (page_directory_t *)kmalloc_a(sizeof(page_directory_t));
     memset(kernel_directory, 0, sizeof(page_directory_t));
