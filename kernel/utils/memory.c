@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <string.h>
+#include <stddef.h>
 
 // Simple heap allocator
 static uint32_t heap_start = 0x100000; // 1MB
