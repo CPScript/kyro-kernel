@@ -2,7 +2,6 @@ CC = gcc
 LD = ld
 NASM = nasm
 
-# Fixed CFLAGS with proper include paths
 CFLAGS = -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -m32 \
          -I. -Iinclude -Ikernel -Ikernel/drivers -Ikernel/interrupts -Ikernel/memory \
          -Ikernel/utils -Ilib/stdio -Iinclude/fs -fno-pie -fno-pic -Wall -Wextra \
@@ -19,8 +18,7 @@ MEMORY_DIR = kernel/memory
 LIB_DIR = lib
 TOOLS_DIR = tools
 
-# Object files - organized
-KERNEL_OBJS = kernel.o fs.o terminal.o user.o shell.o networking.o \
+KERNEL_OBJS = kernel_entry.o kernel.o fs.o terminal.o user.o shell.o networking.o \
               package_manager.o scripting.o run_shell.o run_terminal.o \
               login.o printf.o timer.o syscall.o process.o io.o pic.o
 
@@ -61,6 +59,10 @@ build-kernel: kernel.bin
 kernel.bin: $(ALL_OBJS)
 	$(LD) $(LDFLAGS) -o kernel.bin $^
 	@echo "Kernel built: kernel.bin"
+
+# Add kernel entry point (NEW :P)
+kernel_entry.o: kernel/kernel_entry.asm
+	$(NASM) -f elf32 kernel/kernel_entry.asm -o kernel_entry.o
 
 # Kernel objects
 kernel.o: $(KERNEL_DIR)/kernel.c
@@ -190,7 +192,7 @@ check:
 	@test -f $(DRIVERS_DIR)/network.c || echo "ERROR: network driver not found"
 	@echo "Check complete"
 
-# minimal bootloader (debugging)
+# Minimal bootloader (debugging and testing)
 test-minimal: boot/boot.asm
 	@echo "Building minimal test bootloader..."
 	@echo '[BITS 16]' > test_boot.asm
@@ -223,7 +225,7 @@ run: build-os-image
 		echo "QEMU not found. Install qemu-system-i386 to run the OS."; \
 	fi
 
-# Run with debugging
+# Run Debugging
 run-debug: build-os-image
 	@if command -v qemu-system-i386 >/dev/null 2>&1; then \
 		echo "Running OS in QEMU with debugging..."; \
