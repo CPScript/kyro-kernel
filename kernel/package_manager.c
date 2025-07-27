@@ -1,4 +1,5 @@
 #include "package_manager.h"
+#include <stdio.h>
 
 void add_package(const char *name, const char *version) {
     printf("Package added: %s %s\n", name, version);
