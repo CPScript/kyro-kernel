@@ -2,6 +2,7 @@
 #define USER_H
 
 #include <stdbool.h>
+#include <stdint.h> 
 
 #define MAX_USERS 100
 #define USERNAME_LENGTH 32
