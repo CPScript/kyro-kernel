@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+File file_list[MAX_FILES];
+int file_count = 0;
+
 #define MAX_FILES 5000
 #define FILENAME_LENGTH 50
 #define FILE_CONTENT_LENGTH 256
