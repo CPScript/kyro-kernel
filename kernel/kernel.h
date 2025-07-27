@@ -67,4 +67,7 @@ typedef struct page_directory page_directory_t;
 extern page_directory_t *kernel_directory;
 page_directory_t *create_page_directory(void);
 
+// Context switching
+void context_switch(void *prev_state, void *next_state);
+
 #endif
