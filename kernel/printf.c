@@ -257,16 +257,3 @@ int scanf(const char *format, ...) {
     // Basic stub - keyboard input not implemented yet
     return 0;
 }
-
-void print_message(const char *message) {
-    puts(message);
-}
-
-void clear_screen(void) {
-    for (int i = 0; i < VGA_WIDTH * VGA_HEIGHT; i++) {
-        video_memory[i * 2] = ' ';
-        video_memory[i * 2 + 1] = 0x07;
-    }
-    cursor_x = 0;
-    cursor_y = 0;
-}
