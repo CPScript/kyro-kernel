@@ -1,20 +1,27 @@
 #include "paging.h"
 #include "kernel.h"
 #include <string.h>
+#include <stddef.h>
 
 page_directory_t *kernel_directory = NULL;
 page_directory_t *current_directory = NULL;
 
 uint32_t placement_address = 0x100000; // 1MB mark
 
+// Physical memory allocator
+static uint32_t *frames = NULL;
+static uint32_t nframes = 0;
+
 page_directory_t *create_page_directory(void) {
-    page_directory_t *dir = (page_directory_t*)kmalloc_ap(sizeof(page_directory_t), &dir->physical_addr);
+    uint32_t phys_addr;
+    page_directory_t *dir = (page_directory_t*)kmalloc_ap(sizeof(page_directory_t), &phys_addr);
     memset(dir, 0, sizeof(page_directory_t));
+    dir->physical_addr = phys_addr;
     return dir;
 }
 
 void paging_init(void) {
-    // Initialize frame bitmap for 32MB of RAM (adjust as needed)
+    // Initialize frame bitmap for 32MB of RAM
     nframes = 0x2000000 / PAGE_SIZE; // 32MB / 4KB
     frames = (uint32_t*)kmalloc(nframes / 8); // 1 bit per frame
     memset(frames, 0, nframes / 8);
@@ -59,10 +66,6 @@ void map_page(uint32_t virtual_addr, uint32_t physical_addr, uint32_t flags) {
         (physical_addr & 0xFFFFF000) | flags;
 }
 
-// Physical memory allocator
-static uint32_t *frames;
-static uint32_t nframes;
-
 void set_frame(uint32_t frame_addr) {
     uint32_t frame = frame_addr / PAGE_SIZE;
     uint32_t idx = frame / 32;
@@ -94,7 +97,7 @@ uint32_t first_free_frame(void) {
             }
         }
     }
-    return -1; // No free frames
+    return (uint32_t)-1; // No free frames
 }
 
 void alloc_frame(uint32_t virtual_addr, bool is_kernel, bool is_writable) {
