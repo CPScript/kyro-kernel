@@ -10,7 +10,7 @@ start:
     mov ds, ax
     mov es, ax
     mov ss, ax
-    mov sp, 0x7000 
+    mov sp, 0x7000      ; Fixed: Move stack below bootloader to avoid collision
 
     ; Clear screen
     mov ah, 0x00
@@ -158,16 +158,8 @@ init_pm:
     mov esi, pm_msg
     call print_string_pm
 
-    ; Add a debug message before jumping to kernel
-    mov esi, jumping_msg
-    call print_string_pm
-
     ; Jump to kernel (make sure kernel exists at this address!)
     call KERNEL_OFFSET
-
-    ; If we get here, kernel returned - show debug message
-    mov esi, kernel_returned_msg
-    call print_string_pm
 
     ; If kernel returns, hang
     jmp hang
@@ -238,10 +230,8 @@ loading_msg db 'Loading kernel...', 0x0D, 0x0A, 0
 chs_msg db 'Using CHS addressing...', 0x0D, 0x0A, 0
 kernel_loaded_msg db 'Kernel loaded successfully!', 0x0D, 0x0A, 0
 disk_error_msg db 'Disk read error!', 0x0D, 0x0A, 0
-pm_msg db 'Protected mode', 0
-jumping_msg db ' - Jump to kernel', 0
-kernel_returned_msg db ' - Kernel returned!', 0
+pm_msg db 'Entered 32-bit protected mode', 0
 
-; Pad to exactly 510 bytes and add boot signature
-times 510-($-$) db 0
+; Pad to 510 bytes and add boot signature
+times 510-($-$$) db 0
 dw 0xAA55
