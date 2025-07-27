@@ -10,6 +10,8 @@ start:
     mov es, ax
     mov ss, ax
     mov sp, 0x7000
+
+    ; Clear screen
     mov ah, 0x00
     mov al, 0x03
     int 0x10
@@ -40,12 +42,14 @@ load_kernel:
     mov si, loading_msg
     call print_string
 
+    ; First check if LBA is supported
     mov ah, 0x41         ; Check extensions present
     mov bx, 0x55AA       ; Magic number
     mov dl, 0x80         ; Drive number
     int 0x13
     jc .try_chs          ; If carry set, LBA not supported
     
+    ; LBA is supported, proceed with LBA read
     mov si, disk_address_packet
     mov ah, 0x42         ; Extended read with LBA
     mov dl, 0x80         ; Disk number (first hard disk)
@@ -70,7 +74,7 @@ load_kernel:
     jc disk_error
 
 .success:
-    ; Success message YAYAYYAYAYYAYAYYAYAY
+    ; Success message after kernel is loaded
     mov si, kernel_loaded_msg
     call print_string
     ret
@@ -102,6 +106,7 @@ setup_protected_mode:
     ; Far jump to flush CPU pipeline and enter protected mode
     jmp CODE_SEG:init_pm
 
+; Print string (real mode)
 print_string:
     push ax
     push si
@@ -152,8 +157,14 @@ init_pm:
     mov esi, pm_msg
     call print_string_pm
 
-    ; Jump to kernel (make sure kernel exists at this address!)
+    ; Add a debug message before jumping to kernel
+    mov esi, jumping_msg
+    call print_string_pm
+
     call KERNEL_OFFSET
+
+    mov esi, kernel_returned_msg
+    call print_string_pm
 
     ; If kernel returns, hang
     jmp hang
@@ -224,8 +235,10 @@ loading_msg db 'Loading kernel...', 0x0D, 0x0A, 0
 chs_msg db 'Using CHS addressing...', 0x0D, 0x0A, 0
 kernel_loaded_msg db 'Kernel loaded successfully!', 0x0D, 0x0A, 0
 disk_error_msg db 'Disk read error!', 0x0D, 0x0A, 0
-pm_msg db 'Entered 32-bit protected mode', 0
+pm_msg db 'Protected mode', 0
+jumping_msg db ' - Jump to kernel', 0
+kernel_returned_msg db ' - Kernel returned!', 0
 
-; Pad to 510 bytes and add boot signature
-times 510-($-$$) db 0
+; Pad to exactly 510 bytes and add boot signature
+times 510-($-$) db 0
 dw 0xAA55
