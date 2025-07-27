@@ -2,10 +2,11 @@ CC = gcc
 LD = ld
 NASM = nasm
 
-# Updated CFLAGS with proper include paths
+# Fixed CFLAGS with proper include paths
 CFLAGS = -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -m32 \
          -I. -Iinclude -Ikernel -Ikernel/drivers -Ikernel/interrupts -Ikernel/memory \
-         -Ikernel/utils -Ilib/stdio -fno-pie -fno-pic -Wall -Wextra
+         -Ikernel/utils -Ilib/stdio -Iinclude/fs -fno-pie -fno-pic -Wall -Wextra \
+         -DDEBUG -g
 
 LDFLAGS = -Ttext 0x1000 --oformat binary -m elf_i386 -nostdlib
 
