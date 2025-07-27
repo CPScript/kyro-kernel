@@ -61,11 +61,11 @@ void schedule(void);
 process_t *create_process(const char *name, void (*entry_point)(void), bool kernel_mode);
 void alloc_frame(uint32_t addr, bool is_kernel, bool is_writable);
 
-// Page directory forward declaration
-struct page_directory;
-typedef struct page_directory page_directory_t;
-extern page_directory_t *kernel_directory;
-page_directory_t *create_page_directory(void);
+// Page directory forward declaration. (commented out because of makefile 59)
+//struct page_directory;
+//typedef struct page_directory page_directory_t;
+//extern page_directory_t *kernel_directory;
+//page_directory_t *create_page_directory(void);
 
 // Context switching
 void context_switch(void *prev_state, void *next_state);
