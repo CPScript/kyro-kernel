@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdarg.h>
-#include <string.h>
 
+// Forward declarations for size_t
 typedef uint32_t size_t;
 
 // Memory management functions
@@ -29,42 +29,42 @@ int strcmp(const char *s1, const char *s2);
 void print_message(const char *message);
 void clear_screen(void);
 void putchar(char c);
-void puts(const char *str);
 
 // Standard library functions
 int printf(const char *format, ...);
 int scanf(const char *format, ...);
+int sprintf(char *str, const char *format, ...);
 int vsprintf(char *str, const char *format, va_list args);
+int sscanf(const char *str, const char *format, ...);
 int vsscanf(const char *str, const char *format, va_list args);
 
 // Initialization functions
 void init_users(void);
 void init_file_system(void);
+
+// Module initialization functions
 void fs_init(void);
 void terminal_init(void);
 void user_init(void);
 void shell_init(void);
 void package_manager_init(void);
 void scripting_init(void);
-void syscall_init(void);
-void process_init(void);
 
 // Core kernel functions
 void kernel_init(void);
 void kernel_main(void);
 
-// Process management
+// Process management (forward declarations)
+struct process;
+typedef struct process process_t;
 void schedule(void);
 process_t *create_process(const char *name, void (*entry_point)(void), bool kernel_mode);
+void alloc_frame(uint32_t addr, bool is_kernel, bool is_writable);
 
-// Forward declaration for process_t
-typedef struct process process_t;
-
-// Paging functions
-page_directory_t *create_page_directory(void);
-void alloc_frame(uint32_t virtual_addr, bool is_kernel, bool is_writable);
-
-// Forward declaration for page_directory_t
+// Page directory forward declaration
+struct page_directory;
 typedef struct page_directory page_directory_t;
+extern page_directory_t *kernel_directory;
+page_directory_t *create_page_directory(void);
 
 #endif
