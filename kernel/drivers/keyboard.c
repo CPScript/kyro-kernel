@@ -1,6 +1,6 @@
-#include "drivers/keyboard.h"
-#include "kernel.h"
-#include "io.h"
+#include "keyboard.h"
+#include "../kernel.h"
+#include "../io.h"
 
 keyboard_state_t keyboard_state;
 
@@ -17,6 +17,13 @@ void keyboard_init() {
 
 void keyboard_interrupt_handler(void) {
     uint8_t scancode = keyboard_read_data();
+    
+    // Handle key release (ignore for now)
+    if (scancode & 0x80) {
+        scancode &= 0x7F; // Remove release flag
+        // Handle key release events here if needed
+        return;
+    }
     
     if (keyboard_state.buffer_count < KEYBOARD_BUFFER_SIZE) {
         keyboard_state.buffer[keyboard_state.buffer_head] = scancode;
@@ -68,13 +75,85 @@ char scancode_to_ascii(uint8_t scancode, bool shift) {
         '*', 0, ' '
     };
     
+    static char scancode_map_shift[] = {
+        0, 0, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', '\b',
+        '\t', 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',
+        0, 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', '~',
+        0, '|', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0,
+        '*', 0, ' '
+    };
+    
+    // Handle shift key press/release
+    if (scancode == KEY_SHIFT_L || scancode == KEY_SHIFT_R) {
+        keyboard_state.flags |= KEYBOARD_FLAG_SHIFT;
+        return 0;
+    }
+    
     if (scancode < sizeof(scancode_map)) {
-        char c = scancode_map[scancode];
-        if (shift && c >= 'a' && c <= 'z') {
-            c = c - 'a' + 'A';
+        if (shift) {
+            return scancode_map_shift[scancode];
+        } else {
+            return scancode_map[scancode];
         }
-        return c;
     }
     
     return 0;
+}
+
+// Additional required functions
+void keyboard_handler(void) {
+    keyboard_interrupt_handler();
+}
+
+void keyboard_wait_input(void) {
+    while (inb(KEYBOARD_STATUS_PORT) & KEYBOARD_STATUS_INPUT_FULL);
+}
+
+void keyboard_wait_output(void) {
+    while (!(inb(KEYBOARD_STATUS_PORT) & KEYBOARD_STATUS_OUTPUT_FULL));
+}
+
+void keyboard_set_leds(uint8_t leds) {
+    keyboard_write_data(KEYBOARD_CMD_SET_LEDS);
+    keyboard_write_data(leds);
+    keyboard_state.led_state = leds;
+}
+
+void keyboard_enable(void) {
+    keyboard_write_data(KEYBOARD_CMD_ENABLE);
+}
+
+void keyboard_disable(void) {
+    keyboard_write_data(KEYBOARD_CMD_DISABLE);
+}
+
+bool keyboard_buffer_empty(void) {
+    return keyboard_state.buffer_count == 0;
+}
+
+bool keyboard_buffer_full(void) {
+    return keyboard_state.buffer_count >= KEYBOARD_BUFFER_SIZE;
+}
+
+void keyboard_buffer_put(uint8_t scancode) {
+    if (!keyboard_buffer_full()) {
+        keyboard_state.buffer[keyboard_state.buffer_head] = scancode;
+        keyboard_state.buffer_head = (keyboard_state.buffer_head + 1) % KEYBOARD_BUFFER_SIZE;
+        keyboard_state.buffer_count++;
+    }
+}
+
+uint8_t keyboard_buffer_get(void) {
+    if (keyboard_buffer_empty()) {
+        return 0;
+    }
+    
+    uint8_t scancode = keyboard_state.buffer[keyboard_state.buffer_tail];
+    keyboard_state.buffer_tail = (keyboard_state.buffer_tail + 1) % KEYBOARD_BUFFER_SIZE;
+    keyboard_state.buffer_count--;
+    return scancode;
+}
+
+void keyboard_update_leds(void) {
+    keyboard_set_leds(keyboard_state.led_state);
 }
