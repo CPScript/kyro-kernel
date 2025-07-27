@@ -1,4 +1,5 @@
 #include "idt.h"
+#include "kernel.h"
 #include <string.h>
 
 idt_entry_t idt[IDT_ENTRIES];
