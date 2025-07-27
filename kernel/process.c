@@ -1,6 +1,7 @@
 #include "process.h"
 #include "kernel.h"
 #include <string.h>
+#include <stddef.h>
 
 process_t *current_process = NULL;
 process_t *process_list = NULL;
@@ -14,7 +15,7 @@ void process_init(void) {
 }
 
 process_t *create_process(const char *name, void (*entry_point)(void), bool kernel_mode) {
-    process_t *proc = kmalloc(sizeof(process_t));
+    process_t *proc = (process_t*)kmalloc(sizeof(process_t)); 
     if (!proc) return NULL;
     
     memset(proc, 0, sizeof(process_t));
@@ -163,13 +164,11 @@ void exit(int status) {
 
 extern void context_switch(void *prev_state, void *next_state);
 
-asm volatile (
+asm(
     ".global context_switch\n"
     "context_switch:\n"
     "    push %ebp\n"
     "    mov %esp, %ebp\n"
-    "    \n"
-    "    # Save current state\n"
     "    push %eax\n"
     "    push %ebx\n"
     "    push %ecx\n"
@@ -178,21 +177,14 @@ asm volatile (
     "    push %edi\n"
     "    pushf\n"
     "    \n"
-    "    # Get prev and next state pointers\n"
-    "    mov 8(%ebp), %eax    # prev_state\n"
-    "    mov 12(%ebp), %ebx   # next_state\n"
+    "    mov 8(%ebp), %eax\n"
+    "    mov %esp, 16(%eax)\n"
     "    \n"
-    "    # Save current ESP to prev_state\n"
-    "    mov %esp, 16(%eax)   # offset of esp in cpu_state_t\n"
+    "    mov 12(%ebp), %eax\n"
+    "    mov 16(%eax), %esp\n"
+    "    mov 20(%eax), %ebx\n"
+    "    mov %ebx, %cr3\n"
     "    \n"
-    "    # Load new ESP from next_state\n"
-    "    mov 16(%ebx), %esp   # restore ESP\n"
-    "    \n"
-    "    # Switch page directory if needed\n"
-    "    mov 32(%ebx), %ecx   # cr3 offset\n"
-    "    mov %ecx, %cr3\n"
-    "    \n"
-    "    # Restore new state\n"
     "    popf\n"
     "    pop %edi\n"
     "    pop %esi\n"
@@ -200,7 +192,6 @@ asm volatile (
     "    pop %ecx\n"
     "    pop %ebx\n"
     "    pop %eax\n"
-    "    \n"
     "    pop %ebp\n"
     "    ret\n"
 );
