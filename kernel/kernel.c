@@ -19,10 +19,6 @@
 #include "run_shell.h"
 #include "run_terminal.h"
 
-void _start(void) {
-    kernel_main();
-}
-
 void clear_screen() {
     char *video_memory = (char *)0xb8000;
     for (int i = 0; i < 80 * 25; i++) {
@@ -77,7 +73,7 @@ void kernel_init() {
 
 void kernel_main() { 
     clear_screen();
-    print_message("Welcome to Kyro OS!\nYour in control!\n");
+    print_message("Welcome to Kyro OS!\n\n");
     
     kernel_init();
     idt_init();
@@ -101,7 +97,7 @@ void kernel_main() {
     // Start shell in user mode (create as separate process)
     create_process("shell", (void*)run_shell, false);
     
-    // Simple idle loop... don't try process management yet
+    // Simple idle loop... don't try process management yet (NO)
     printf("Entering idle loop...\n");
     while (1) {
         asm volatile("hlt"); // Halt until next interrupt
