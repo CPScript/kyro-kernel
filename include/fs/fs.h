@@ -2,7 +2,7 @@
 #define FS_H
 
 #include <stdbool.h>
-#include <string.h>
+#include <stdint.h>
 
 #define MAX_FILES 5000
 #define FILENAME_LENGTH 50
@@ -14,13 +14,16 @@ typedef struct {
     bool is_directory;
 } File;
 
-File file_list[MAX_FILES];
-int file_count;
+extern File file_list[MAX_FILES];
+extern int file_count;
 
 bool create_file(const char *name, bool is_directory);
+bool create_directory(const char *name);
 bool delete_file(const char *name);
 bool delete_directory(const char *name);
-void list_files();
+void list_files(void);
 bool read_file(const char *name);
+bool write_file(const char *name, const char *content);
+void fs_init(void);
 
 #endif
