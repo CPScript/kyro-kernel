@@ -5,7 +5,7 @@ KERNEL_OFFSET equ 0x1000
 KERNEL_SECTORS equ 50
 
 start:
-    ; Initialize segments
+    ; Initialize seg
     mov ax, 0x0000
     mov ds, ax
     mov es, ax
