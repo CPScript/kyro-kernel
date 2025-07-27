@@ -2,6 +2,9 @@
 #include "kernel.h"
 #include <string.h>
 
+File file_list[MAX_FILES];
+int file_count = 0;
+
 bool create_file(const char *name, bool is_directory) {
     if (file_count >= MAX_FILES) {
         printf("File limit reached.\n");
