@@ -11,6 +11,6 @@ void init_users(void) {
 void init_file_system(void) {
     create_directory("home");
     create_file("readme.txt", false);
-    write_file("readme.txt", "Welcome to the kyro OS!\nHours spent making this: 379");
+    write_file("readme.txt", "Welcome to the kyro OS!\nHours spent making this: 381");
     printf("File system initialized with %d files.\n", file_count);
 }
