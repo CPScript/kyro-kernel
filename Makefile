@@ -44,7 +44,6 @@ ALL_OBJS = $(KERNEL_OBJS) $(DRIVER_OBJS) $(UTIL_OBJS) $(INTERRUPT_OBJS) \
 all: build-os-image
 
 build-os-image: boot.bin kernel.bin
-	# Create a properly aligned disk image
 	dd if=/dev/zero of=os-image.bin bs=512 count=2880 2>/dev/null
 	dd if=boot.bin of=os-image.bin bs=512 count=1 conv=notrunc 2>/dev/null
 	dd if=kernel.bin of=os-image.bin bs=512 seek=1 conv=notrunc 2>/dev/null
