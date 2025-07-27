@@ -44,19 +44,9 @@ void load_idt(void) {
     asm volatile("lidt %0" : : "m"(idt_ptr));
 }
 
+// Exception handlers - only define each once
 void divide_error_handler(void) {
-    // Handle divide by zero exception
     print_message("EXCEPTION: Divide by zero\n");
-    asm volatile("cli; hlt");
-}
-
-void general_protection_fault_handler(void) {
-    // Handle GPF
-    asm volatile("cli; hlt");
-}
-
-void page_fault_handler(void) {
-    // Handle page fault
     asm volatile("cli; hlt");
 }
 
@@ -85,72 +75,8 @@ void page_fault_handler(void) {
     asm volatile("cli; hlt");
 }
 
-// Hardware interrupt handlers
-void timer_handler_asm(void);
-void keyboard_handler_asm(void);
-
-// Assembly wrappers for interrupt handlers
-asm(
-    ".global divide_error_handler_asm\n"
-    "divide_error_handler_asm:\n"
-    "    cli\n"
-    "    push $0\n"    // Error code (none for divide error)
-    "    push $0\n"    // Interrupt number
-    "    jmp isr_common_stub\n"
-    
-    ".global general_protection_fault_handler_asm\n" 
-    "general_protection_fault_handler_asm:\n"
-    "    cli\n"
-    "    push $13\n"   // Interrupt number
-    "    jmp isr_common_stub\n"
-    
-    ".global page_fault_handler_asm\n"
-    "page_fault_handler_asm:\n"
-    "    cli\n"
-    "    push $14\n"   // Interrupt number  
-    "    jmp isr_common_stub\n"
-    
-    ".global timer_handler_asm\n"
-    "timer_handler_asm:\n"
-    "    cli\n"
-    "    pusha\n"
-    "    call timer_handler\n"
-    "    popa\n"
-    "    sti\n"
-    "    iret\n"
-    
-    ".global keyboard_handler_asm\n"
-    "keyboard_handler_asm:\n"
-    "    cli\n"
-    "    pusha\n" 
-    "    call keyboard_interrupt_handler\n"
-    "    popa\n"
-    "    sti\n"
-    "    iret\n"
-    
-    "isr_common_stub:\n"
-    "    pusha\n"
-    "    push %ds\n"
-    "    push %es\n"
-    "    push %fs\n"
-    "    push %gs\n"
-    "    mov $0x10, %ax\n"  // Load kernel data segment
-    "    mov %ax, %ds\n"
-    "    mov %ax, %es\n"
-    "    mov %ax, %fs\n"
-    "    mov %ax, %gs\n"
-    "    call fault_handler\n"  // Call C handler
-    "    pop %gs\n"
-    "    pop %fs\n"
-    "    pop %es\n"
-    "    pop %ds\n"
-    "    popa\n"
-    "    add $8, %esp\n"     // Clean up error code and int number
-    "    iret\n"
-);
-
 // C fault handler
 void fault_handler(void) {
     print_message("FAULT: System exception occurred\n");
-    asm volatile("cli; hlt");  // Halt system
+    asm volatile("cli; hlt");
 }
