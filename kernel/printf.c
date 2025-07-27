@@ -1,5 +1,6 @@
 #include <stdarg.h>
 #include <stdint.h>
+#include <string.h>
 #include "kernel.h"
 
 static char *video_memory = (char *)0xB8000;
@@ -55,6 +56,28 @@ void puts(const char *str) {
     }
 }
 
+static void print_number_to_buffer(char **buffer, unsigned int num, int base) {
+    char digits[] = "0123456789ABCDEF";
+    char temp[32];
+    int i = 0;
+    
+    if (num == 0) {
+        **buffer = '0';
+        (*buffer)++;
+        return;
+    }
+    
+    while (num > 0) {
+        temp[i++] = digits[num % base];
+        num /= base;
+    }
+    
+    while (--i >= 0) {
+        **buffer = temp[i];
+        (*buffer)++;
+    }
+}
+
 static void print_number(unsigned int num, int base) {
     char digits[] = "0123456789ABCDEF";
     char buffer[32];
@@ -73,6 +96,81 @@ static void print_number(unsigned int num, int base) {
     while (--i >= 0) {
         putchar(buffer[i]);
     }
+}
+
+int vsprintf(char *str, const char *format, va_list args) {
+    char *buffer = str;
+    int count = 0;
+    
+    while (*format) {
+        if (*format == '%') {
+            format++;
+            switch (*format) {
+                case 'd':
+                case 'i': {
+                    int num = va_arg(args, int);
+                    if (num < 0) {
+                        *buffer++ = '-';
+                        num = -num;
+                        count++;
+                    }
+                    print_number_to_buffer(&buffer, num, 10);
+                    count++;
+                    break;
+                }
+                case 'u':
+                    print_number_to_buffer(&buffer, va_arg(args, unsigned int), 10);
+                    count++;
+                    break;
+                case 'x':
+                    print_number_to_buffer(&buffer, va_arg(args, unsigned int), 16);
+                    count++;
+                    break;
+                case 'X':
+                    print_number_to_buffer(&buffer, va_arg(args, unsigned int), 16);
+                    count++;
+                    break;
+                case 'c':
+                    *buffer++ = va_arg(args, int);
+                    count++;
+                    break;
+                case 's': {
+                    char *s = va_arg(args, char*);
+                    if (s) {
+                        while (*s) {
+                            *buffer++ = *s++;
+                        }
+                        count++;
+                    }
+                    break;
+                }
+                case '%':
+                    *buffer++ = '%';
+                    count++;
+                    break;
+                default:
+                    *buffer++ = '%';
+                    *buffer++ = *format;
+                    count += 2;
+                    break;
+            }
+        } else {
+            *buffer++ = *format;
+            count++;
+        }
+        format++;
+    }
+    
+    *buffer = '\0';
+    return count;
+}
+
+int sprintf(char *str, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    int result = vsprintf(str, format, args);
+    va_end(args);
+    return result;
 }
 
 int printf(const char *format, ...) {
@@ -140,6 +238,19 @@ int printf(const char *format, ...) {
     
     va_end(args);
     return count;
+}
+
+int vsscanf(const char *str, const char *format, va_list args) {
+    // Basic stub implementation
+    return 0;
+}
+
+int sscanf(const char *str, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    int result = vsscanf(str, format, args);
+    va_end(args);
+    return result;
 }
 
 int scanf(const char *format, ...) {
