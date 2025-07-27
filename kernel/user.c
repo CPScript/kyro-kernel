@@ -1,6 +1,8 @@
 #include "user.h"
 #include "kernel.h"
 #include <string.h>
+#include <stddef.h>
+#include <stdio.h>
 
 user_t users[MAX_USERS];
 int user_count = 0;
