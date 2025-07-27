@@ -5,7 +5,13 @@
 page_directory_t *kernel_directory = NULL;
 page_directory_t *current_directory = NULL;
 
-extern uint32_t placement_address; // From boot process
+uint32_t placement_address = 0x100000; // 1MB mark
+
+page_directory_t *create_page_directory(void) {
+    page_directory_t *dir = (page_directory_t*)kmalloc_ap(sizeof(page_directory_t), &dir->physical_addr);
+    memset(dir, 0, sizeof(page_directory_t));
+    return dir;
+}
 
 void paging_init(void) {
     // Create kernel page directory
@@ -30,14 +36,6 @@ void switch_page_directory(page_directory_t *dir) {
     current_directory = dir;
     asm volatile("mov %0, %%cr3" : : "r"(dir->physical_addr));
 }
-
-page_directory_t *create_page_directory(void) {
-    page_directory_t *dir = (page_directory_t*)kmalloc_ap(sizeof(page_directory_t), &dir->physical_addr);
-    memset(dir, 0, sizeof(page_directory_t));
-    return dir;
-}
-
-uint32_t placement_address = 0x100000; // 1MB mark
 
 void map_page(uint32_t virtual_addr, uint32_t physical_addr, uint32_t flags) {
     uint32_t page_dir_index = virtual_addr >> 22;
