@@ -1,5 +1,6 @@
 #include "drivers/keyboard.h"
 #include "kernel.h"
+#include "io.h"
 
 keyboard_state_t keyboard_state;
 
@@ -55,7 +56,6 @@ char keyboard_get_char(void) {
     keyboard_state.buffer_tail = (keyboard_state.buffer_tail + 1) % KEYBOARD_BUFFER_SIZE;
     keyboard_state.buffer_count--;
     
-    // Convert scancode to ASCII (simplified)
     return scancode_to_ascii(scancode, keyboard_state.flags & KEYBOARD_FLAG_SHIFT);
 }
 
