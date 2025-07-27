@@ -5,7 +5,6 @@ KERNEL_OFFSET equ 0x1000
 KERNEL_SECTORS equ 50
 
 start:
-    ; Initialize segment registers
     mov ax, 0x0000
     mov ds, ax
     mov es, ax
@@ -56,25 +55,78 @@ load_kernel:
     mov si, loading_msg
     call print_string
 
+    ; Debug: Print disk number and starting LBA
+    mov si, debug_disk_info
+    call print_string
+    call print_disk_info
+
     ; Set up disk address packet
     mov si, disk_address_packet
-    mov ah, 0x42
-    mov dl, 0x80
-    int 0x13
-    jc disk_error
+    mov ah, 0x42         ; Extended read with LBA
+    mov dl, 0x80         ; Disk number (first hard disk)
+    
+    ; Debug: Print disk number (before read)
+    mov si, debug_disk_number
+    call print_string
+    call print_byte
 
+    int 0x13
+    jc disk_error        ; Jump to disk_error if disk read fails
+
+    ; Debug: Success message after kernel is loaded
     mov si, kernel_loaded_msg
     call print_string
     ret
 
-; Disk Address Packet (DAP)
+; Disk Address Packet (DAP) for LBA
 disk_address_packet:
-    db 0x10            ; Size of packet
-    db 0x00            ; Reserved
-    dw KERNEL_SECTORS  ; Number of sectors to read
-    dw KERNEL_OFFSET   ; Offset (destination address)
-    dw 0x0000          ; Segment
-    dq 1               ; Starting LBA (sector 1)
+    db 0x10              ; Size of packet (16 bytes)
+    db 0x00              ; Reserved
+    dw KERNEL_SECTORS    ; Number of sectors to read
+    dw KERNEL_OFFSET     ; Offset (destination address for kernel)
+    dw 0x0000            ; Segment (ignored for LBA)
+    dq 1                 ; Starting LBA (sector 1)
+
+; Debug function to print disk info
+print_disk_info:
+    ; Print disk number (dl)
+    mov al, dl
+    call print_byte
+
+    ; Print LBA start address
+    mov ax, [disk_address_packet + 12]  ; LBA Start address (DWORD)
+    call print_word
+
+    ; Print number of sectors (KERNEL_SECTORS)
+    mov ax, KERNEL_SECTORS
+    call print_word
+    ret
+
+; Print byte as hex
+print_byte:
+    push ax
+    mov bx, 16
+    mov ah, 0
+    div bx
+    add al, '0'
+    mov [debug_output], al
+    pop ax
+    mov si, debug_output
+    call print_string
+    ret
+
+; Print word as hex
+print_word:
+    push ax
+    mov bx, 16
+    mov ah, 0
+    div bx
+    add al, '0'
+    mov [debug_output], al
+    pop ax
+    mov si, debug_output
+    call print_string
+    ret
 
 ; Print string (real mode)
 print_string:
@@ -87,6 +139,12 @@ print_string:
     jmp .loop
 .done:
     ret
+
+; Debug strings (Unique Label for debug buffer)
+debug_output db 0x00
+debug_disk_info db 'Disk number: ', 0
+debug_disk_number db 'Disk number before read: ', 0
+debug_output_buffer db 'LBA Start: ', 0
 
 ; Enable A20 line
 enable_a20:
