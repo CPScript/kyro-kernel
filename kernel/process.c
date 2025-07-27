@@ -1,4 +1,5 @@
 #include "process.h"
+#include "kernel.h"
 #include <string.h>
 
 process_t *current_process = NULL;
