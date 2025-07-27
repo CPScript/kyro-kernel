@@ -10,7 +10,7 @@ start:
     mov ds, ax
     mov es, ax
     mov ss, ax
-    mov sp, 0x7000      ; Fixed: Move stack below bootloader to avoid collision
+    mov sp, 0x7000
 
     ; Clear screen
     mov ah, 0x00
