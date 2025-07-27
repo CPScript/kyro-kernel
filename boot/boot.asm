@@ -5,11 +5,12 @@ KERNEL_OFFSET equ 0x1000
 KERNEL_SECTORS equ 50
 
 start:
+    ; Initialize segments
     mov ax, 0x0000
     mov ds, ax
     mov es, ax
     mov ss, ax
-    mov sp, 0x7000
+    mov sp, 0x7000 
 
     ; Clear screen
     mov ah, 0x00
@@ -161,8 +162,10 @@ init_pm:
     mov esi, jumping_msg
     call print_string_pm
 
+    ; Jump to kernel (make sure kernel exists at this address!)
     call KERNEL_OFFSET
 
+    ; If we get here, kernel returned - show debug message
     mov esi, kernel_returned_msg
     call print_string_pm
 
