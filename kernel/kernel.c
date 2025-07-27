@@ -19,6 +19,10 @@
 #include "run_shell.h"
 #include "run_terminal.h"
 
+void _start(void) {
+    kernel_main();
+}
+
 void clear_screen() {
     char *video_memory = (char *)0xb8000;
     for (int i = 0; i < 80 * 25; i++) {
