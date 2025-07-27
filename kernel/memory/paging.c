@@ -31,6 +31,14 @@ void switch_page_directory(page_directory_t *dir) {
     asm volatile("mov %0, %%cr3" : : "r"(dir->physical_addr));
 }
 
+page_directory_t *create_page_directory(void) {
+    page_directory_t *dir = (page_directory_t*)kmalloc_ap(sizeof(page_directory_t), &dir->physical_addr);
+    memset(dir, 0, sizeof(page_directory_t));
+    return dir;
+}
+
+uint32_t placement_address = 0x100000; // 1MB mark
+
 void map_page(uint32_t virtual_addr, uint32_t physical_addr, uint32_t flags) {
     uint32_t page_dir_index = virtual_addr >> 22;
     uint32_t page_table_index = (virtual_addr >> 12) & 0x3FF;
