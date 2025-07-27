@@ -71,24 +71,54 @@ void kernel_init() {
     printf("Kyro OS - All systems initialized\n");
 }
 
-void kernel_main() {
+//void kernel_main() {
+//    clear_screen();
+//    print_message("Welcome to Kyro OS!\nYour in control!\n");
+//    
+//    kernel_init();
+//    
+//    // Enable interrupts
+//    asm volatile("sti");
+//    
+//    // Start login process
+//    login_prompt();
+//    
+//    // Start shell in user mode (create as separate process)
+//    create_process("shell", (void*)run_shell, false);
+//    
+//    // Kernel idle loop
+//    while (1) {
+//        schedule(); // Let other processes run
+//        asm volatile("hlt"); // Halt until next interrupt
+//    }
+//}
+
+// Minimal boot for testing
+void kernel_main() { 
     clear_screen();
     print_message("Welcome to Kyro OS!\nYour in control!\n");
     
-    kernel_init();
+    // Basic initialization
+    idt_init();
+    pic_init();
+    timer_init(100);
+    
+    // Initialize simple components
+    fs_init();
+    user_init();
+    
+    // Initialize users and filesystem
+    init_users();
+    init_file_system();
+    
+    printf("Kyro OS - Basic systems initialized\n");
     
     // Enable interrupts
     asm volatile("sti");
     
-    // Start login process
-    login_prompt();
-    
-    // Start shell in user mode (create as separate process)
-    create_process("shell", (void*)run_shell, false);
-    
-    // Kernel idle loop
+    // Simple idle loop... don't try process management yet
+    printf("Entering idle loop...\n");
     while (1) {
-        schedule(); // Let other processes run
         asm volatile("hlt"); // Halt until next interrupt
     }
 }
