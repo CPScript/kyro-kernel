@@ -1,4 +1,5 @@
 #include "paging.h"
+#include "kernel.h"
 #include <string.h>
 
 page_directory_t *kernel_directory = NULL;
