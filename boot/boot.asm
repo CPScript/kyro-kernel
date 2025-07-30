@@ -2,7 +2,7 @@
 [ORG 0x7C00]
 
 KERNEL_OFFSET equ 0x1000
-KERNEL_SECTORS equ 50
+KERNEL_SECTORS equ 20  ; Reduced from 50 to 20 sectors (10KB)
 
 start:
     ; Initialize seg
@@ -65,7 +65,7 @@ load_kernel:
     
     ; Read using CHS: Cylinder 0, Head 0, Sector 2 (sectors start at 1)
     mov ah, 0x02         ; Read sectors function
-    mov al, KERNEL_SECTORS ; Number of sectors to read (limited to 63 for CHS)
+    mov al, KERNEL_SECTORS ; Number of sectors to read
     mov ch, 0            ; Cylinder 0
     mov cl, 2            ; Sector 2 (kernel starts after boot sector)
     mov dh, 0            ; Head 0
