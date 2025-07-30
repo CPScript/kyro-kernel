@@ -1,253 +1,131 @@
+ASM = nasm
 CC = gcc
 LD = ld
-NASM = nasm
+DD = dd
+QEMU = qemu-system-i386
 
-CFLAGS = -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -m32 \
-         -I. -Iinclude -Ikernel -Ikernel/drivers -Ikernel/interrupts -Ikernel/memory \
-         -Ikernel/utils -Ilib/stdio -Iinclude/fs -fno-pie -fno-pic -Wall -Wextra \
-         -DDEBUG -g
-
-LDFLAGS = -Ttext 0x1000 --oformat binary -m elf_i386 -nostdlib
-
-# Source dirs
+BOOT_DIR = boot
 KERNEL_DIR = kernel
-DRIVERS_DIR = kernel/drivers
-UTILS_DIR = kernel/utils
-INTERRUPTS_DIR = kernel/interrupts
-MEMORY_DIR = kernel/memory
+INCLUDE_DIR = include
 LIB_DIR = lib
 TOOLS_DIR = tools
+BUILD_DIR = build
 
-KERNEL_OBJS = kernel_entry.o kernel.o fs.o terminal.o user.o shell.o networking.o \
-              package_manager.o scripting.o run_shell.o run_terminal.o \
-              login.o printf.o timer.o syscall.o process.o io.o pic.o
+# Output files
+BOOT_BIN = $(BUILD_DIR)/boot.bin
+KERNEL_BIN = $(BUILD_DIR)/kernel.bin
+OS_IMAGE = os-image.bin
 
-DRIVER_OBJS = keyboard.o mouse.o network.o
+# Compiler flags for 32-bit cross-compilation
+CFLAGS = -m32 -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-stack-protector \
+         -nostdinc -fno-pie -ffreestanding -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
+         -I$(INCLUDE_DIR) -I$(KERNEL_DIR) -Wall -Wextra -g
 
-UTIL_OBJS = memory.o string.o math.o
+# Linker flags
+LDFLAGS = -m elf_i386 -T $(KERNEL_DIR)/kernel.ld
 
-INTERRUPT_OBJS = idt.o interrupt_asm.o
+# Assembly flags
+ASMFLAGS = -f elf32 -g
 
-MEMORY_OBJS = paging.o
+# Bootloader assembly flags (binary output)
+BOOT_ASMFLAGS = -f bin
 
-STDIO_OBJS = stdio.o
+# Create build directory
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
 
-INIT_OBJS = init.o
+# Kernel source files
+KERNEL_SOURCES = $(shell find $(KERNEL_DIR) -name "*.c" | grep -v printf_stubs.c)
+KERNEL_ASM_SOURCES = $(shell find $(KERNEL_DIR) -name "*.s")
 
 # Object files
-ALL_OBJS = $(KERNEL_OBJS) $(DRIVER_OBJS) $(UTIL_OBJS) $(INTERRUPT_OBJS) \
-           $(MEMORY_OBJS) $(STDIO_OBJS) $(INIT_OBJS)
+KERNEL_OBJECTS = $(KERNEL_SOURCES:%.c=$(BUILD_DIR)/%.o) $(KERNEL_ASM_SOURCES:%.s=$(BUILD_DIR)/%.o)
+KERNEL_OBJECTS += $(BUILD_DIR)/$(TOOLS_DIR)/init.o
 
-.PHONY: all build-os-image build-boot-loader build-kernel clean clean-all debug size check run help
+# Library sources
+LIB_SOURCES = $(shell find $(LIB_DIR) -name "*.c")
+LIB_OBJECTS = $(LIB_SOURCES:%.c=$(BUILD_DIR)/%.o)
 
-all: build-os-image
+.PHONY: all clean run debug info help
 
-build-os-image: boot.bin kernel.bin
-	dd if=/dev/zero of=os-image.bin bs=512 count=2880 2>/dev/null
-	dd if=boot.bin of=os-image.bin bs=512 count=1 conv=notrunc 2>/dev/null
-	dd if=kernel.bin of=os-image.bin bs=512 seek=1 conv=notrunc 2>/dev/null
-	@echo "OS image built successfully: os-image.bin"
+all: $(BUILD_DIR) $(OS_IMAGE)
 
-build-boot-loader: boot.bin
+# Build OS image
+$(OS_IMAGE): $(BOOT_BIN) $(KERNEL_BIN)
+	@echo "Creating OS image..."
+	$(DD) if=/dev/zero of=$(OS_IMAGE) bs=512 count=2880 2>/dev/null
+	$(DD) if=$(BOOT_BIN) of=$(OS_IMAGE) bs=512 count=1 conv=notrunc 2>/dev/null
+	$(DD) if=$(KERNEL_BIN) of=$(OS_IMAGE) bs=512 seek=1 conv=notrunc 2>/dev/null
+	@echo "OS image built: $(OS_IMAGE)"
 
-boot.bin: boot/boot.asm
-	$(NASM) -f bin boot/boot.asm -o boot.bin
-	@echo "Bootloader built: boot.bin"
+# Build bootloader
+$(BOOT_BIN): $(BOOT_DIR)/boot.asm | $(BUILD_DIR)
+	@echo "Building bootloader..."
+	$(ASM) $(BOOT_ASMFLAGS) $< -o $@
 
-build-kernel: kernel.bin
+# Build kernel
+$(KERNEL_BIN): $(KERNEL_OBJECTS) $(LIB_OBJECTS) $(KERNEL_DIR)/kernel.ld | $(BUILD_DIR)
+	@echo "Linking kernel..."
+	$(LD) $(LDFLAGS) -o $@ $(KERNEL_OBJECTS) $(LIB_OBJECTS)
 
-kernel.bin: $(ALL_OBJS)
-	$(LD) $(LDFLAGS) -o kernel.bin $^
-	@echo "Kernel built: kernel.bin"
-
-# Add kernel entry point (NEW :P)
-kernel_entry.o: kernel/kernel_entry.asm
-	$(NASM) -f elf32 kernel/kernel_entry.asm -o kernel_entry.o
-
-# Kernel objects
-kernel.o: $(KERNEL_DIR)/kernel.c
+# Compile C source files
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	@echo "Compiling $<..."
 	$(CC) $(CFLAGS) -c $< -o $@
 
-fs.o: $(KERNEL_DIR)/fs.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-terminal.o: $(KERNEL_DIR)/terminal.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-user.o: $(KERNEL_DIR)/user.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-shell.o: $(KERNEL_DIR)/shell.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-networking.o: $(KERNEL_DIR)/networking.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-package_manager.o: $(KERNEL_DIR)/package_manager.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-scripting.o: $(KERNEL_DIR)/scripting.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-run_shell.o: $(KERNEL_DIR)/run_shell.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-run_terminal.o: $(KERNEL_DIR)/run_terminal.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-login.o: $(KERNEL_DIR)/login.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-printf.o: $(KERNEL_DIR)/printf.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-timer.o: $(KERNEL_DIR)/timer.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-syscall.o: $(KERNEL_DIR)/syscall.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-process.o: $(KERNEL_DIR)/process.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-io.o: $(KERNEL_DIR)/io.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-pic.o: $(KERNEL_DIR)/pic.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Driver objects
-keyboard.o: $(DRIVERS_DIR)/keyboard.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-mouse.o: $(DRIVERS_DIR)/mouse.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-network.o: $(DRIVERS_DIR)/network.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Utility objects
-memory.o: $(UTILS_DIR)/memory.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-string.o: $(UTILS_DIR)/string.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-math.o: $(UTILS_DIR)/math.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Interrupt objects
-idt.o: $(INTERRUPTS_DIR)/idt.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-interrupt_asm.o: $(INTERRUPTS_DIR)/interrupt_asm.s
-	$(NASM) -f elf32 $< -o $@
-
-# Memory objects
-paging.o: $(MEMORY_DIR)/paging.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Library objects
-stdio.o: $(LIB_DIR)/stdio/stdio.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Tools objects
-init.o: $(TOOLS_DIR)/init.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Clean targets
-clean:
-	rm -f *.bin *.o
-	@echo "Cleaned build files"
-
-clean-all: clean
-	rm -f os-image.bin
-	@echo "Cleaned all generated files"
-
-# Force rebuild everything
-rebuild: clean all
-
-# Debug targets
-debug: CFLAGS += -g -DDEBUG
-debug: all
-
-# Size information
-size: build-kernel build-boot-loader
-	@echo "Build size information:"
-	@echo "Boot sector size:"
-	@ls -lh boot.bin 2>/dev/null || echo "boot.bin not found"
-	@echo "Kernel size:"
-	@ls -lh kernel.bin 2>/dev/null || echo "kernel.bin not found"
-	@echo "OS image size:"
-	@ls -lh os-image.bin 2>/dev/null || echo "os-image.bin not found"
-
-# Check for common issues
-check:
-	@echo "Checking for common build issues..."
-	@echo "Checking if all source files exist..."
-	@test -f boot/boot.asm || echo "ERROR: boot/boot.asm not found"
-	@test -f $(KERNEL_DIR)/kernel.c || echo "ERROR: kernel/kernel.c not found"
-	@test -f $(DRIVERS_DIR)/keyboard.c || echo "ERROR: keyboard driver not found"
-	@test -f $(DRIVERS_DIR)/mouse.c || echo "ERROR: mouse driver not found"
-	@test -f $(DRIVERS_DIR)/network.c || echo "ERROR: network driver not found"
-	@echo "Check complete"
-
-# Minimal bootloader (debugging and testing)
-test-minimal: boot/boot.asm
-	@echo "Building minimal test bootloader..."
-	@echo '[BITS 16]' > test_boot.asm
-	@echo '[ORG 0x7C00]' >> test_boot.asm
-	@echo 'start:' >> test_boot.asm
-	@echo '    mov ax, 0x0000' >> test_boot.asm
-	@echo '    mov ds, ax' >> test_boot.asm
-	@echo '    mov si, msg' >> test_boot.asm
-	@echo '    mov ah, 0x0E' >> test_boot.asm
-	@echo 'loop: lodsb' >> test_boot.asm
-	@echo '    cmp al, 0' >> test_boot.asm
-	@echo '    je hang' >> test_boot.asm
-	@echo '    int 0x10' >> test_boot.asm
-	@echo '    jmp loop' >> test_boot.asm
-	@echo 'hang: hlt' >> test_boot.asm
-	@echo '    jmp hang' >> test_boot.asm
-	@echo 'msg db "TEST BOOTLOADER OK", 0' >> test_boot.asm
-	@echo 'times 510-($$-$$) db 0' >> test_boot.asm
-	@echo 'dw 0xAA55' >> test_boot.asm
-	$(NASM) -f bin test_boot.asm -o test_boot.bin
-	@echo "Test bootloader created: test_boot.bin"
-	@echo "Run with: qemu-system-i386 -drive format=raw,file=test_boot.bin"
+# Assemble assembly files
+$(BUILD_DIR)/%.o: %.s | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	@echo "Assembling $<..."
+	$(ASM) $(ASMFLAGS) $< -o $@
 
 # Run in QEMU
-run: build-os-image
-	@if command -v qemu-system-i386 >/dev/null 2>&1; then \
-		echo "Running OS in QEMU..."; \
-		qemu-system-i386 -drive format=raw,file=os-image.bin; \
-	else \
-		echo "QEMU not found. Install qemu-system-i386 to run the OS."; \
-	fi
+run: $(OS_IMAGE)
+	@echo "Starting Kyro OS in QEMU..."
+	$(QEMU) -drive format=raw,file=$(OS_IMAGE),index=0,if=floppy -m 512M
 
-# Run Debugging
-run-debug: build-os-image
-	@if command -v qemu-system-i386 >/dev/null 2>&1; then \
-		echo "Running OS in QEMU with debugging..."; \
-		qemu-system-i386 -drive format=raw,file=os-image.bin -monitor stdio; \
-	else \
-		echo "QEMU not found. Install qemu-system-i386 to run the OS."; \
-	fi
+# Debug in QEMU
+debug: $(OS_IMAGE)
+	@echo "Starting Kyro OS in QEMU with debugging..."
+	$(QEMU) -drive format=raw,file=$(OS_IMAGE),index=0,if=floppy -m 512M -s -S
 
-help:
+# Clean build files
+clean:
+	@echo "Cleaning..."
+	rm -rf $(BUILD_DIR) $(OS_IMAGE)
+
+# Show build information
+info:
+	@echo "Make System"
+	@echo "==================="
+	@echo "Bootloader: $(BOOT_BIN)"
+	@echo "Kernel:     $(KERNEL_BIN)"
+	@echo "OS Image:   $(OS_IMAGE)"
+	@echo ""
+	@echo "Kernel sources: $(words $(KERNEL_SOURCES)) files"
+	@echo "Library sources: $(words $(LIB_SOURCES)) files"
+	@echo ""
 	@echo "Available targets:"
-	@echo "  all (default)      - Build complete OS image"
-	@echo "  build-os-image     - Build OS image (bootloader + kernel)"
-	@echo "  build-os-image-simple - Build OS image using simple cat method"
-	@echo "  build-boot-loader  - Build bootloader only"
-	@echo "  build-kernel       - Build kernel only"
-	@echo "  clean              - Remove object files and binaries"
-	@echo "  clean-all          - Remove all generated files"
-	@echo "  rebuild            - Clean and rebuild everything"
-	@echo "  debug              - Build with debug symbols"
-	@echo "  size               - Show size information"
-	@echo "  check              - Check for missing source files"
-	@echo "  test-minimal       - Create minimal test bootloader"
-	@echo "  run                - Run OS in QEMU (if available)"
-	@echo "  run-debug          - Run OS in QEMU with monitor"
-	@echo "  help               - Show this help message"
+	@echo "  all     - Build complete OS image"
+	@echo "  run     - Build and run in QEMU"
+	@echo "  debug   - Build and run in QEMU with debugging"
+	@echo "  clean   - Remove all build files"
+	@echo "  info    - Show this information"
+
+help: info
+
+# Install dependencies (Ubuntu/Debian)
+install-deps:
+	@echo "Installing build dependencies..."
+	sudo apt update
+	sudo apt install gcc-multilib nasm qemu-system-x86 build-essential
+
+# Check if required tools are available
+check-tools:
+	@echo "Checking build tools..."
+	@which $(CC) > /dev/null || (echo "ERROR: $(CC) not found" && exit 1)
+	@which $(ASM) > /dev/null || (echo "ERROR: $(ASM) not found" && exit 1)
+	@which $(LD) > /dev/null || (echo "ERROR: $(LD) not found" && exit 1)
+	@which $(QEMU) > /dev/null || (echo "ERROR: $(QEMU) not found" && exit 1)
+	@echo "All tools available!"
