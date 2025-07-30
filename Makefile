@@ -19,10 +19,9 @@ OS_IMAGE = os-image.bin
 # Compiler flags for 32-bit cross-compilation
 CFLAGS = -m32 -nostdlib -nostartfiles -nodefaultlibs -fno-builtin -fno-stack-protector \
          -nostdinc -fno-pie -ffreestanding -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
-         -I$(INCLUDE_DIR) -I$(KERNEL_DIR) -Wall -Wextra -g -O0
+         -I$(INCLUDE_DIR) -I$(KERNEL_DIR) -Wall -Wextra -Os -ffunction-sections -fdata-sections
 
-# Linker flags
-LDFLAGS = -m elf_i386 -T $(KERNEL_DIR)/kernel.ld
+LDFLAGS = -m elf_i386 -T $(KERNEL_DIR)/kernel.ld --gc-sections
 
 # Assembly flags
 ASMFLAGS = -f elf32 -g
@@ -106,8 +105,14 @@ debug: $(OS_IMAGE)
 
 # Test bootloader only
 test-boot: $(BOOT_BIN)
+	@echo ""
+	@echo "------------------------------------------------------------------------------"
+	@echo "Info:"
+	@echo "If your screen turns red; The bootloader is okay, but the kernel has an issue."
+	@echo "------------------------------------------------------------------------------"
+	@echo ""
 	@echo "Testing bootloader with simple kernel..."
-	$(ASM) -f bin test_kernel.asm -o $(BUILD_DIR)/test_kernel.bin
+	$(ASM) -f bin testing/test_kernel.asm -o $(BUILD_DIR)/test_kernel.bin
 	$(DD) if=/dev/zero of=test-os-image.bin bs=512 count=2880 2>/dev/null
 	$(DD) if=$(BOOT_BIN) of=test-os-image.bin bs=512 count=1 conv=notrunc 2>/dev/null
 	$(DD) if=$(BUILD_DIR)/test_kernel.bin of=test-os-image.bin bs=512 seek=1 conv=notrunc 2>/dev/null
